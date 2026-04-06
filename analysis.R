@@ -6,6 +6,9 @@
 # Install tidyverse if you haven't already: install.packages("tidyverse")
 library(tidyverse)
 
+# install.packages("pwr")
+library(pwr)
+
 # ==============================================================================
 # 1. DATA SETUP & PREPARATION
 # ==============================================================================
@@ -151,9 +154,9 @@ print(">>> T-TESTS: TIME <<<")
 t_test_time_two <- t.test(Time ~ Mode, data = df)
 print("Two-Tailed T-Test (Time vs Mode):"); print(t_test_time_two)
 
-# ONE-TAILED T-TEST: "Is Auditory significantly FASTER (less time) than Visual?"
-# "alternative = less" tests if Auditory (Group 1) < Visual (Group 2).
-t_test_time_one <- t.test(Time ~ Mode, data = df, alternative = "less")
+# ONE-TAILED T-TEST: "Is Auditory significantly SLOWER (less time) than Visual?"
+# "alternative = less" tests if Auditory (Group 1) > Visual (Group 2).
+t_test_time_one <- t.test(Time ~ Mode, data = df, alternative = "greater")
 print("One-Tailed T-Test (Auditory Time < Visual Time):"); print(t_test_time_one)
 
 
@@ -182,4 +185,44 @@ print("Speed-Accuracy Trade-off (Overall Correlation):"); print(cor_overall)
 # Least Squares Linear Regression Model (Does Mode and Time predict Accuracy?)
 model_lm <- lm(Accuracy ~ Time * Mode, data = df)
 print("Linear Regression Model Summary:"); print(summary(model_lm))
+
+# ---------------------------------------------------------
+# 5. POST-HOC POWER ANALYSIS (TYPE II ERROR)
+# ---------------------------------------------------------
+
+# Step 1: Dynamically extract the means, SDs, and sample sizes from your dataframe
+# (Using na.rm = TRUE ensures it doesn't break if you have missing data)
+mean_visual   <- mean(df$Time[df$Mode == "Visual"], na.rm = TRUE)
+mean_auditory <- mean(df$Time[df$Mode == "Auditory"], na.rm = TRUE)
+
+sd_visual   <- sd(df$Time[df$Mode == "Visual"], na.rm = TRUE)
+sd_auditory <- sd(df$Time[df$Mode == "Auditory"], na.rm = TRUE)
+
+n_visual   <- sum(df$Mode == "Visual" & !is.na(df$Time))
+n_auditory <- sum(df$Mode == "Auditory" & !is.na(df$Time))
+
+# Step 2: Calculate the Pooled Standard Deviation
+# This is the statistical formula for combining the variance of two groups
+numerator <- ((n_visual - 1) * sd_visual^2) + ((n_auditory - 1) * sd_auditory^2)
+denominator <- (n_visual + n_auditory - 2)
+pooled_sd <- sqrt(numerator / denominator)
+
+# Step 3: Calculate Cohen's d (Effect Size)
+# We use the absolute difference because power analyses require a positive effect size
+effect_size_d <- abs(mean_visual - mean_auditory) / pooled_sd
+
+# Step 4: Run the Power Analysis
+# We use the average of the two group sizes just in case your final groups are slightly uneven
+n_per_group <- (n_visual + n_auditory) / 2 
+
+power_test <- pwr.t.test(
+  n = n_per_group, 
+  d = effect_size_d, 
+  sig.level = 0.05, 
+  type = "two.sample", 
+  alternative = "greater" # "greater" is used here to indicate a one-tailed test
+)
+
+print("--- DYNAMIC POST-HOC POWER ANALYSIS ---")
+print(power_test)
 
