@@ -18,14 +18,14 @@ visual_data <- data.frame(
   Mode = "Visual",
   Gender = c("F", "F", "M", "M", "F", "M", "M", "F", "M", "F", "M", "F"),
   Time = c(530, 398, 546, 546, 614, 757, 563, 434, 849, 754, 473, 503),
-  Accuracy = c(NA, NA, NA, 19, NA, 21, NA, 12, 18, 22, 24, 22)
+  Accuracy = c(20, 23, 21, 19, 22, 21, 21, 12, 18, 22, 24, 22)
 )
 
 audio_data <- data.frame(
   Mode = "Auditory",
   Gender = c("F", "F", "F", "M", "M", "M", "M", "M", "F", "F", "F", "M"),
   Time = c(608, 550, 365, 410, 738, 484, 660, 280, 540, 510, 280, 647),
-  Accuracy = c(NA, NA, NA, 19, 21, 23, 23, 19, 21, 18, NA, NA)
+  Accuracy = c(23, 22, 19, 19, 21, 23, 23, 19, 21, 18, 14, 22)
 )
 
 # Combine into one main dataframe
