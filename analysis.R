@@ -81,6 +81,56 @@ plot_acc_box <- ggplot(drop_na(df, Accuracy), aes(x = Mode, y = Accuracy, fill =
   labs(title = "Accuracy by Feedback Mode", y = "Accuracy (/25)")
 print(plot_acc_box)
 
+# ==============================================================================
+# SIMPLE SCATTER PLOTS: TIME VS ACCURACY
+# ==============================================================================
+
+# 1. COMBINED PLOT (Both modes on the same graph, distinguished by color)
+plot_combined_simple <- ggplot(drop_na(df, Accuracy), aes(x = Time, y = Accuracy, color = Mode)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "Combined Scatter Plot: Time vs Accuracy", 
+       x = "Time (s)", 
+       y = "Accuracy (/25)")
+
+print(plot_combined_simple)
+
+
+# 2. SEPARATE PLOTS (Two distinct, standalone graphs)
+
+# Visual Mode Only
+plot_visual_only <- ggplot(df %>% filter(Mode == "Visual" & !is.na(Accuracy)), aes(x = Time, y = Accuracy)) +
+  geom_point(size = 3, color = "#00BFC4") + # using standard ggplot teal for Visual
+  theme_minimal() +
+  labs(title = "Time vs Accuracy: Visual Mode", 
+       x = "Time (s)", 
+       y = "Accuracy (/25)")
+
+print(plot_visual_only)
+
+# Auditory Mode Only
+plot_auditory_only <- ggplot(df %>% filter(Mode == "Auditory" & !is.na(Accuracy)), aes(x = Time, y = Accuracy)) +
+  geom_point(size = 3, color = "#F8766D") + # using standard ggplot salmon for Auditory
+  theme_minimal() +
+  labs(title = "Time vs Accuracy: Auditory Mode", 
+       x = "Time (s)", 
+       y = "Accuracy (/25)")
+
+print(plot_auditory_only)
+
+
+# 3. FACETED PLOT (Bonus: The "R way" to show separate graphs side-by-side cleanly)
+plot_faceted_simple <- ggplot(drop_na(df, Accuracy), aes(x = Time, y = Accuracy, color = Mode)) +
+  geom_point(size = 3) +
+  facet_wrap(~ Mode) + # This physically separates the modes into two panels
+  theme_minimal() +
+  theme(legend.position = "none") + # Hides the legend since the titles explain it
+  labs(title = "Time vs Accuracy: Side-by-Side Comparison", 
+       x = "Time (s)", 
+       y = "Accuracy (/25)")
+
+print(plot_faceted_simple)
+
 # QQ Plots to check for Normal Distribution in Time
 plot_qq <- ggplot(df, aes(sample = Time, color = Mode)) +
   stat_qq() +
@@ -148,29 +198,28 @@ print("F-Test for Equal Variances (Accuracy):"); print(var_test_acc)
 # 4b. Group Comparisons (T-Tests)
 # ---------------------------------------------------------
 
-print(">>> T-TESTS: TIME <<<")
+print(">>> TWO-TAILED T-TESTS (General Practice / TA Requirement) <<<")
 
-# TWO-TAILED T-TEST: "Is there a difference in time between modes?"
-t_test_time_two <- t.test(Time ~ Mode, data = df)
-print("Two-Tailed T-Test (Time vs Mode):"); print(t_test_time_two)
+# Two-Tailed Student's T-Test for Time
+t_test_time_two <- t.test(Time ~ Mode, data = df, var.equal = TRUE)
+print("Two-Tailed T-Test (Time):"); print(t_test_time_two)
 
-# ONE-TAILED T-TEST: "Is Auditory significantly SLOWER (less time) than Visual?"
-# "alternative = less" tests if Auditory (Group 1) > Visual (Group 2).
-t_test_time_one <- t.test(Time ~ Mode, data = df, alternative = "greater")
-print("One-Tailed T-Test (Auditory Time < Visual Time):"); print(t_test_time_one)
+# Two-Tailed Student's T-Test for Accuracy
+t_test_acc_two <- t.test(Accuracy ~ Mode, data = df, var.equal = TRUE)
+print("Two-Tailed T-Test (Accuracy):"); print(t_test_acc_two)
 
 
-print(">>> T-TESTS: ACCURACY <<<")
+print(">>> ONE-TAILED T-TESTS (Testing Specific Hypotheses) <<<")
 
-# TWO-TAILED T-TEST: "Is there a difference in accuracy between modes?"
-t_test_acc_two <- t.test(Accuracy ~ Mode, data = df)
-print("Two-Tailed T-Test (Accuracy vs Mode):"); print(t_test_acc_two)
+# One-Tailed T-Test (TIME): "Is Visual significantly FASTER than Auditory?"
+# Mathematically: Is Auditory (Group 1) > Visual (Group 2)?
+t_test_time_one <- t.test(Time ~ Mode, data = df, alternative = "greater", var.equal = TRUE)
+print("One-Tailed T-Test (Auditory Time > Visual Time):"); print(t_test_time_one)
 
-# ONE-TAILED T-TEST: "Is Auditory significantly MORE ACCURATE (higher score) than Visual?"
-# "alternative = greater" tests if Auditory (Group 1) > Visual (Group 2).
-t_test_acc_one <- t.test(Accuracy ~ Mode, data = df, alternative = "greater")
+# One-Tailed T-Test (ACCURACY): "Does Visual have LOWER accuracy than Auditory?"
+# Mathematically: Is Auditory (Group 1) > Visual (Group 2)?
+t_test_acc_one <- t.test(Accuracy ~ Mode, data = df, alternative = "greater", var.equal = TRUE)
 print("One-Tailed T-Test (Auditory Accuracy > Visual Accuracy):"); print(t_test_acc_one)
-
 
 # ---------------------------------------------------------
 # 4c. Speed-Accuracy Trade-off (Correlation & Regression)
@@ -178,9 +227,9 @@ print("One-Tailed T-Test (Auditory Accuracy > Visual Accuracy):"); print(t_test_
 
 print(">>> SPEED-ACCURACY TRADE-OFF <<<")
 
-# Overall Pearson Correlation between Time and Accuracy (ignoring NAs)
+# Overall Pearson Correlation (Null Hypothesis: Time and Accuracy are NOT correlated)
 cor_overall <- cor.test(df$Time, df$Accuracy, method = "pearson", use = "complete.obs")
-print("Speed-Accuracy Trade-off (Overall Correlation):"); print(cor_overall)
+print("Null: No Correlation | Alternative: True correlation is not 0"); print(cor_overall)
 
 # Least Squares Linear Regression Model (Does Mode and Time predict Accuracy?)
 model_lm <- lm(Accuracy ~ Time * Mode, data = df)
@@ -226,3 +275,50 @@ power_test <- pwr.t.test(
 print("--- DYNAMIC POST-HOC POWER ANALYSIS ---")
 print(power_test)
 
+# ==============================================================================
+# EXPLORATORY ANALYSIS: COVARIATE (GENDER)
+# ==============================================================================
+print(">>> EXPLORATORY ANALYSIS: GENDER vs TIME & ACCURACY <<<")
+
+# Student's T-Test: Did Gender affect Completion Time?
+t_test_gender_time <- t.test(Time ~ Gender, data = df, var.equal = TRUE)
+print("T-Test (Time by Gender):")
+print(t_test_gender_time)
+
+# Student's T-Test: Did Gender affect Accuracy?
+t_test_gender_acc <- t.test(Accuracy ~ Gender, data = df, var.equal = TRUE)
+print("T-Test (Accuracy by Gender):")
+print(t_test_gender_acc)
+
+# ==============================================================================
+# TA REQUIREMENTS: SENSITIVITY ANALYSIS & NON-PARAMETRIC TESTS
+# ==============================================================================
+
+
+print(">>> SENSITIVITY ANALYSIS (Checking the Outliers 12 and 14) <<<")
+# We identify the outliers: 12 (Visual) and 14 (Auditory).
+# Let's create a temporary dataset without those specific participants
+df_clean <- df %>% filter(!Accuracy %in% c(12, 14) | is.na(Accuracy))
+
+# Re-run the Student's one-tailed t-test without the outliers
+t_test_acc_clean <- t.test(Accuracy ~ Mode, data = df_clean, alternative = "greater", var.equal = TRUE)
+
+print("Original Accuracy P-Value (With Outliers):")
+print(t_test_acc_student$p.value)
+
+print("Cleaned Accuracy P-Value (Without Outliers):")
+print(t_test_acc_clean$p.value)
+# Note for paper: If both p-values are > 0.05, the conclusion DOES NOT change.
+
+
+print(">>> NON-PARAMETRIC ALTERNATIVE (Wilcoxon Rank-Sum Test) <<<")
+# This is the non-parametric equivalent of the independent t-test
+# We include alternative="greater" here to match your directional hypotheses
+wilcox_time <- wilcox.test(Time ~ Mode, data = df, alternative = "greater")
+wilcox_acc <- wilcox.test(Accuracy ~ Mode, data = df, alternative = "greater")
+
+print("Wilcoxon Test (Time):")
+print(wilcox_time)
+
+print("Wilcoxon Test (Accuracy):")
+print(wilcox_acc)
