@@ -9,6 +9,9 @@ library(tidyverse)
 # install.packages("pwr")
 library(pwr)
 
+# Note: You may need to run install.packages("effectsize") in your console first
+library(effectsize)
+
 # ==============================================================================
 # 1. DATA SETUP & PREPARATION
 # ==============================================================================
@@ -80,56 +83,6 @@ plot_acc_box <- ggplot(drop_na(df, Accuracy), aes(x = Mode, y = Accuracy, fill =
   theme_minimal() +
   labs(title = "Accuracy by Feedback Mode", y = "Accuracy (/25)")
 print(plot_acc_box)
-
-# ==============================================================================
-# SIMPLE SCATTER PLOTS: TIME VS ACCURACY
-# ==============================================================================
-
-# 1. COMBINED PLOT (Both modes on the same graph, distinguished by color)
-plot_combined_simple <- ggplot(drop_na(df, Accuracy), aes(x = Time, y = Accuracy, color = Mode)) +
-  geom_point(size = 3) +
-  theme_minimal() +
-  labs(title = "Combined Scatter Plot: Time vs Accuracy", 
-       x = "Time (s)", 
-       y = "Accuracy (/25)")
-
-print(plot_combined_simple)
-
-
-# 2. SEPARATE PLOTS (Two distinct, standalone graphs)
-
-# Visual Mode Only
-plot_visual_only <- ggplot(df %>% filter(Mode == "Visual" & !is.na(Accuracy)), aes(x = Time, y = Accuracy)) +
-  geom_point(size = 3, color = "#00BFC4") + # using standard ggplot teal for Visual
-  theme_minimal() +
-  labs(title = "Time vs Accuracy: Visual Mode", 
-       x = "Time (s)", 
-       y = "Accuracy (/25)")
-
-print(plot_visual_only)
-
-# Auditory Mode Only
-plot_auditory_only <- ggplot(df %>% filter(Mode == "Auditory" & !is.na(Accuracy)), aes(x = Time, y = Accuracy)) +
-  geom_point(size = 3, color = "#F8766D") + # using standard ggplot salmon for Auditory
-  theme_minimal() +
-  labs(title = "Time vs Accuracy: Auditory Mode", 
-       x = "Time (s)", 
-       y = "Accuracy (/25)")
-
-print(plot_auditory_only)
-
-
-# 3. FACETED PLOT (Bonus: The "R way" to show separate graphs side-by-side cleanly)
-plot_faceted_simple <- ggplot(drop_na(df, Accuracy), aes(x = Time, y = Accuracy, color = Mode)) +
-  geom_point(size = 3) +
-  facet_wrap(~ Mode) + # This physically separates the modes into two panels
-  theme_minimal() +
-  theme(legend.position = "none") + # Hides the legend since the titles explain it
-  labs(title = "Time vs Accuracy: Side-by-Side Comparison", 
-       x = "Time (s)", 
-       y = "Accuracy (/25)")
-
-print(plot_faceted_simple)
 
 # QQ Plots to check for Normal Distribution in Time
 plot_qq <- ggplot(df, aes(sample = Time, color = Mode)) +
@@ -227,13 +180,92 @@ print("One-Tailed T-Test (Auditory Accuracy > Visual Accuracy):"); print(t_test_
 
 print(">>> SPEED-ACCURACY TRADE-OFF <<<")
 
+
+# ==============================================================================
+# SIMPLE SCATTER PLOTS: TIME VS ACCURACY
+# ==============================================================================
+
+# 1. COMBINED PLOT (Both modes on the same graph, distinguished by color)
+plot_combined_simple <- ggplot(drop_na(df, Accuracy), aes(x = Time, y = Accuracy, color = Mode)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "Combined Scatter Plot: Time vs Accuracy", 
+       x = "Time (s)", 
+       y = "Accuracy (/25)")
+
+print(plot_combined_simple)
+
+
+# 2. SEPARATE PLOTS (Two distinct, standalone graphs)
+
+# Visual Mode Only
+plot_visual_only <- ggplot(df %>% filter(Mode == "Visual" & !is.na(Accuracy)), aes(x = Time, y = Accuracy)) +
+  geom_point(size = 3, color = "#00BFC4") + # using standard ggplot teal for Visual
+  theme_minimal() +
+  labs(title = "Time vs Accuracy: Visual Mode", 
+       x = "Time (s)", 
+       y = "Accuracy (/25)")
+
+print(plot_visual_only)
+
+# Auditory Mode Only
+plot_auditory_only <- ggplot(df %>% filter(Mode == "Auditory" & !is.na(Accuracy)), aes(x = Time, y = Accuracy)) +
+  geom_point(size = 3, color = "#F8766D") + # using standard ggplot salmon for Auditory
+  theme_minimal() +
+  labs(title = "Time vs Accuracy: Auditory Mode", 
+       x = "Time (s)", 
+       y = "Accuracy (/25)")
+
+print(plot_auditory_only)
+
+
+# 3. FACETED PLOT (Bonus: The "R way" to show separate graphs side-by-side cleanly)
+plot_faceted_simple <- ggplot(drop_na(df, Accuracy), aes(x = Time, y = Accuracy, color = Mode)) +
+  geom_point(size = 3) +
+  facet_wrap(~ Mode) + # This physically separates the modes into two panels
+  theme_minimal() +
+  theme(legend.position = "none") + # Hides the legend since the titles explain it
+  labs(title = "Time vs Accuracy: Side-by-Side Comparison", 
+       x = "Time (s)", 
+       y = "Accuracy (/25)")
+
+print(plot_faceted_simple)
+
+
 # Overall Pearson Correlation (Null Hypothesis: Time and Accuracy are NOT correlated)
 cor_overall <- cor.test(df$Time, df$Accuracy, method = "pearson", use = "complete.obs")
 print("Null: No Correlation | Alternative: True correlation is not 0"); print(cor_overall)
 
+print(">>> CORRELATIONS BY FEEDBACK MODE <<<")
+
+# Correlation for Auditory Group Only
+print("Pearson Correlation (Auditory):")
+cor_auditory <- cor.test(df$Time[df$Mode == "Auditory"], df$Accuracy[df$Mode == "Auditory"])
+print(cor_auditory)
+
+# Correlation for Visual Group Only
+print("Pearson Correlation (Visual):")
+cor_visual <- cor.test(df$Time[df$Mode == "Visual"], df$Accuracy[df$Mode == "Visual"])
+print(cor_visual)
+
+
 # Least Squares Linear Regression Model (Does Mode and Time predict Accuracy?)
 model_lm <- lm(Accuracy ~ Time * Mode, data = df)
 print("Linear Regression Model Summary:"); print(summary(model_lm))
+
+# ---------------------------------------------------------
+# REGRESSION DIAGNOSTICS (Residual Plots)
+# ---------------------------------------------------------
+print(">>> GENERATING RESIDUAL PLOTS <<<")
+
+# This command splits your plotting window into a 2x2 grid
+par(mfrow = c(2, 2)) 
+
+# This automatically generates the 4 diagnostic plots for your model
+plot(model_lm)
+
+# This resets your plotting window back to a normal 1x1 layout
+par(mfrow = c(1, 1))
 
 # ---------------------------------------------------------
 # 5. POST-HOC POWER ANALYSIS (TYPE II ERROR)
@@ -293,23 +325,39 @@ print(t_test_gender_acc)
 # ==============================================================================
 # TA REQUIREMENTS: SENSITIVITY ANALYSIS & NON-PARAMETRIC TESTS
 # ==============================================================================
-
-
 print(">>> SENSITIVITY ANALYSIS (Checking the Outliers 12 and 14) <<<")
 # We identify the outliers: 12 (Visual) and 14 (Auditory).
 # Let's create a temporary dataset without those specific participants
 df_clean <- df %>% filter(!Accuracy %in% c(12, 14) | is.na(Accuracy))
 
-# Re-run the Student's one-tailed t-test without the outliers
-t_test_acc_clean <- t.test(Accuracy ~ Mode, data = df_clean, alternative = "greater", var.equal = TRUE)
+# Re-run the Student's TWO-TAILED t-test without the outliers
+# (Removed 'alternative = "greater"')
+t_test_acc_clean <- t.test(Accuracy ~ Mode, data = df_clean, var.equal = TRUE)
 
 print("Original Accuracy P-Value (With Outliers):")
-print(t_test_acc_student$p.value)
+# Referencing the original two-tailed test variable
+print(t_test_acc_two$p.value) 
 
 print("Cleaned Accuracy P-Value (Without Outliers):")
 print(t_test_acc_clean$p.value)
-# Note for paper: If both p-values are > 0.05, the conclusion DOES NOT change.
+# Note for paper: If both p-values are > 0.05, the conclusion DOES NOT change. Keep outliers in final report.
 
+# ---------------------------------------------------------
+# SENSITIVITY ANALYSIS: GENDER (Removing Outliers 12 and 14)
+# ---------------------------------------------------------
+print(">>> GENDER SENSITIVITY ANALYSIS (Without Outliers) <<<")
+
+# Use the cleaned dataset (without the 12 and 14 accuracy scores)
+df_clean_gender <- df %>% filter(!Accuracy %in% c(12, 14) | is.na(Accuracy))
+
+# Re-run the Two-Tailed Student's T-Test for Gender
+t_test_gender_clean <- t.test(Accuracy ~ Gender, data = df_clean_gender, var.equal = TRUE)
+
+print("Original Gender P-Value (With Outliers):")
+print(t_test_gender_acc$p.value) # Should be 0.3618
+
+print("Cleaned Gender P-Value (Without Outliers):")
+print(t_test_gender_clean$p.value)
 
 print(">>> NON-PARAMETRIC ALTERNATIVE (Wilcoxon Rank-Sum Test) <<<")
 # This is the non-parametric equivalent of the independent t-test
@@ -322,3 +370,37 @@ print(wilcox_time)
 
 print("Wilcoxon Test (Accuracy):")
 print(wilcox_acc)
+
+# Some more extra stuff
+
+# ---------------------------------------------------------
+# EFFECT SIZE (COHEN'S D)
+# ---------------------------------------------------------
+
+
+print(">>> COHEN'S D FOR PRIMARY T-TESTS <<<")
+
+# Cohen's d for Time
+d_time <- cohens_d(Time ~ Mode, data = df)
+print("Cohen's d (Time):")
+print(d_time)
+
+# Cohen's d for Accuracy
+d_acc <- cohens_d(Accuracy ~ Mode, data = df)
+print("Cohen's d (Accuracy):")
+print(d_acc)
+
+# ---------------------------------------------------------
+# EFFECT SIZE (COHEN'S D) FOR GENDER
+# ---------------------------------------------------------
+print(">>> COHEN'S D FOR GENDER (EXPLORATORY) <<<")
+
+# Cohen's d for Time by Gender
+d_gender_time <- cohens_d(Time ~ Gender, data = df)
+print("Cohen's d (Time by Gender):")
+print(d_gender_time)
+
+# Cohen's d for Accuracy by Gender
+d_gender_acc <- cohens_d(Accuracy ~ Gender, data = df)
+print("Cohen's d (Accuracy by Gender):")
+print(d_gender_acc)
