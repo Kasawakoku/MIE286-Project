@@ -1,3 +1,3 @@
 # MIE286-Project
 
-A repository for the MIE286 Statistics project, using R.
+A repository for Group 68's MIE286 Statistics project, using R. This folder includes the analysis R code used (analysis.R), the blank tests (integrals_test_blank.pdf) and answer keys (integrals_test_answer_key.pdf) for the integrals tests, the raw data obtained (raw_data.csv), the audio file used for the auditory feedback (audio_feedback.mp3), and the presentation used for the visual feedback (visual_feedback.pptx). Please ensure you have the latest version of R, as well as the tidyverse package, installed. To install tidyverse, run the following command on your RStudio terminal: install.packages("tidyverse")

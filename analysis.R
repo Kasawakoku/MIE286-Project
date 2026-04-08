@@ -1,22 +1,20 @@
 
 # ==============================================================================
-# HUMAN-COMPUTER INTERACTION: VISUAL VS. AUDITORY FEEDBACK ANALYSIS
+# Investigating the Effects of Visual Vs. Auditory Feedback on Time and Accuracy of Integral Solving
 # ==============================================================================
 
-# Install tidyverse if you haven't already: install.packages("tidyverse")
+# MIE286
+# Group 68
+
+# install.packages("tidyverse")
 library(tidyverse)
 
-# install.packages("pwr")
-library(pwr)
-
-# Note: You may need to run install.packages("effectsize") in your console first
-library(effectsize)
 
 # ==============================================================================
 # 1. DATA SETUP & PREPARATION
 # ==============================================================================
 
-# Load the partial data
+# Load the data
 visual_data <- data.frame(
   Mode = "Visual",
   Gender = c("F", "F", "M", "M", "F", "M", "M", "F", "M", "F", "M", "F"),
@@ -90,7 +88,9 @@ plot_qq <- ggplot(df, aes(sample = Time, color = Mode)) +
   stat_qq_line() +
   facet_wrap(~ Mode) +
   theme_minimal() +
-  labs(title = "QQ Plot: Time Distribution Check")
+  labs(title = "Quantile-Quantile Plot: Time Distribution Check",
+       x = "Theoretical Quantiles (Standard Deviations)",
+       y = "Sample Quantiles (Time in Seconds)")
 print(plot_qq)
 
 # QQ Plot to check for Normal Distribution in Accuracy
@@ -99,16 +99,11 @@ plot_qq_acc <- ggplot(drop_na(df, Accuracy), aes(sample = Accuracy, color = Mode
   stat_qq_line() +
   facet_wrap(~ Mode) +
   theme_minimal() +
-  labs(title = "QQ Plot: Accuracy Distribution Check")
+  labs(title = "Quantile-Quantile Plot: Accuracy Distribution Check",
+       x = "Theoretical Quantiles (Standard Deviations)",
+       y = "Sample Quantiles (Accuracy Score /25)")
 print(plot_qq_acc)
 
-# Scatterplot: Time vs Accuracy (Speed-Accuracy Trade-off Visualized)
-plot_scatter <- ggplot(drop_na(df, Accuracy), aes(x = Time, y = Accuracy, color = Mode)) +
-  geom_point(size = 3) +
-  geom_smooth(method = "lm", se = TRUE) + 
-  theme_minimal() +
-  labs(title = "Speed-Accuracy Trade-off: Time vs Accuracy", x = "Time (s)", y = "Accuracy")
-print(plot_scatter)
 
 # ==============================================================================
 # 4. INFERENTIAL STATISTICS (ANALYSIS & RESULTS SECTIONS)
@@ -151,7 +146,7 @@ print("F-Test for Equal Variances (Accuracy):"); print(var_test_acc)
 # 4b. Group Comparisons (T-Tests)
 # ---------------------------------------------------------
 
-print(">>> TWO-TAILED T-TESTS (General Practice / TA Requirement) <<<")
+print(">>> TWO-TAILED T-TESTS <<<")
 
 # Two-Tailed Student's T-Test for Time
 t_test_time_two <- t.test(Time ~ Mode, data = df, var.equal = TRUE)
@@ -162,17 +157,23 @@ t_test_acc_two <- t.test(Accuracy ~ Mode, data = df, var.equal = TRUE)
 print("Two-Tailed T-Test (Accuracy):"); print(t_test_acc_two)
 
 
-print(">>> ONE-TAILED T-TESTS (Testing Specific Hypotheses) <<<")
+# Sensitivity Test for Accuracy
+print(">>> SENSITIVITY ANALYSIS (Checking the Outliers 12 and 14) <<<")
+# We identify the outliers: 12 (Visual) and 14 (Auditory).
+# Let's create a temporary dataset without those specific participants
+df_clean <- df %>% filter(!Accuracy %in% c(12, 14) | is.na(Accuracy))
 
-# One-Tailed T-Test (TIME): "Is Visual significantly FASTER than Auditory?"
-# Mathematically: Is Auditory (Group 1) > Visual (Group 2)?
-t_test_time_one <- t.test(Time ~ Mode, data = df, alternative = "greater", var.equal = TRUE)
-print("One-Tailed T-Test (Auditory Time > Visual Time):"); print(t_test_time_one)
+# Re-run the Student's TWO-TAILED t-test without the outliers
+# (Removed 'alternative = "greater"')
+t_test_acc_clean <- t.test(Accuracy ~ Mode, data = df_clean, var.equal = TRUE)
 
-# One-Tailed T-Test (ACCURACY): "Does Visual have LOWER accuracy than Auditory?"
-# Mathematically: Is Auditory (Group 1) > Visual (Group 2)?
-t_test_acc_one <- t.test(Accuracy ~ Mode, data = df, alternative = "greater", var.equal = TRUE)
-print("One-Tailed T-Test (Auditory Accuracy > Visual Accuracy):"); print(t_test_acc_one)
+print("Original Accuracy P-Value (With Outliers):")
+# Referencing the original two-tailed test variable
+print(t_test_acc_two$p.value) 
+
+print("Cleaned Accuracy P-Value (Without Outliers):")
+print(t_test_acc_clean$p.value)
+# Note for paper: If both p-values are > 0.05, the conclusion DOES NOT change. Keep outliers in final report.
 
 # ---------------------------------------------------------
 # 4c. Speed-Accuracy Trade-off (Correlation & Regression)
@@ -180,10 +181,7 @@ print("One-Tailed T-Test (Auditory Accuracy > Visual Accuracy):"); print(t_test_
 
 print(">>> SPEED-ACCURACY TRADE-OFF <<<")
 
-
-# ==============================================================================
-# SIMPLE SCATTER PLOTS: TIME VS ACCURACY
-# ==============================================================================
+# SCATTER PLOTS
 
 # 1. COMBINED PLOT (Both modes on the same graph, distinguished by color)
 plot_combined_simple <- ggplot(drop_na(df, Accuracy), aes(x = Time, y = Accuracy, color = Mode)) +
@@ -232,6 +230,8 @@ plot_faceted_simple <- ggplot(drop_na(df, Accuracy), aes(x = Time, y = Accuracy,
 print(plot_faceted_simple)
 
 
+print(">>> CORRELATIONS OF COMBINED DATASET <<<")
+
 # Overall Pearson Correlation (Null Hypothesis: Time and Accuracy are NOT correlated)
 cor_overall <- cor.test(df$Time, df$Accuracy, method = "pearson", use = "complete.obs")
 print("Null: No Correlation | Alternative: True correlation is not 0"); print(cor_overall)
@@ -249,66 +249,8 @@ cor_visual <- cor.test(df$Time[df$Mode == "Visual"], df$Accuracy[df$Mode == "Vis
 print(cor_visual)
 
 
-# Least Squares Linear Regression Model (Does Mode and Time predict Accuracy?)
-model_lm <- lm(Accuracy ~ Time * Mode, data = df)
-print("Linear Regression Model Summary:"); print(summary(model_lm))
-
-# ---------------------------------------------------------
-# REGRESSION DIAGNOSTICS (Residual Plots)
-# ---------------------------------------------------------
-print(">>> GENERATING RESIDUAL PLOTS <<<")
-
-# This command splits your plotting window into a 2x2 grid
-par(mfrow = c(2, 2)) 
-
-# This automatically generates the 4 diagnostic plots for your model
-plot(model_lm)
-
-# This resets your plotting window back to a normal 1x1 layout
-par(mfrow = c(1, 1))
-
-# ---------------------------------------------------------
-# 5. POST-HOC POWER ANALYSIS (TYPE II ERROR)
-# ---------------------------------------------------------
-
-# Step 1: Dynamically extract the means, SDs, and sample sizes from your dataframe
-# (Using na.rm = TRUE ensures it doesn't break if you have missing data)
-mean_visual   <- mean(df$Time[df$Mode == "Visual"], na.rm = TRUE)
-mean_auditory <- mean(df$Time[df$Mode == "Auditory"], na.rm = TRUE)
-
-sd_visual   <- sd(df$Time[df$Mode == "Visual"], na.rm = TRUE)
-sd_auditory <- sd(df$Time[df$Mode == "Auditory"], na.rm = TRUE)
-
-n_visual   <- sum(df$Mode == "Visual" & !is.na(df$Time))
-n_auditory <- sum(df$Mode == "Auditory" & !is.na(df$Time))
-
-# Step 2: Calculate the Pooled Standard Deviation
-# This is the statistical formula for combining the variance of two groups
-numerator <- ((n_visual - 1) * sd_visual^2) + ((n_auditory - 1) * sd_auditory^2)
-denominator <- (n_visual + n_auditory - 2)
-pooled_sd <- sqrt(numerator / denominator)
-
-# Step 3: Calculate Cohen's d (Effect Size)
-# We use the absolute difference because power analyses require a positive effect size
-effect_size_d <- abs(mean_visual - mean_auditory) / pooled_sd
-
-# Step 4: Run the Power Analysis
-# We use the average of the two group sizes just in case your final groups are slightly uneven
-n_per_group <- (n_visual + n_auditory) / 2 
-
-power_test <- pwr.t.test(
-  n = n_per_group, 
-  d = effect_size_d, 
-  sig.level = 0.05, 
-  type = "two.sample", 
-  alternative = "greater" # "greater" is used here to indicate a one-tailed test
-)
-
-print("--- DYNAMIC POST-HOC POWER ANALYSIS ---")
-print(power_test)
-
 # ==============================================================================
-# EXPLORATORY ANALYSIS: COVARIATE (GENDER)
+# 5. EXPLORATORY ANALYSIS: COVARIATE (GENDER)
 # ==============================================================================
 print(">>> EXPLORATORY ANALYSIS: GENDER vs TIME & ACCURACY <<<")
 
@@ -322,29 +264,13 @@ t_test_gender_acc <- t.test(Accuracy ~ Gender, data = df, var.equal = TRUE)
 print("T-Test (Accuracy by Gender):")
 print(t_test_gender_acc)
 
-# ==============================================================================
-# TA REQUIREMENTS: SENSITIVITY ANALYSIS & NON-PARAMETRIC TESTS
-# ==============================================================================
-print(">>> SENSITIVITY ANALYSIS (Checking the Outliers 12 and 14) <<<")
-# We identify the outliers: 12 (Visual) and 14 (Auditory).
-# Let's create a temporary dataset without those specific participants
-df_clean <- df %>% filter(!Accuracy %in% c(12, 14) | is.na(Accuracy))
-
-# Re-run the Student's TWO-TAILED t-test without the outliers
-# (Removed 'alternative = "greater"')
-t_test_acc_clean <- t.test(Accuracy ~ Mode, data = df_clean, var.equal = TRUE)
-
-print("Original Accuracy P-Value (With Outliers):")
-# Referencing the original two-tailed test variable
-print(t_test_acc_two$p.value) 
-
-print("Cleaned Accuracy P-Value (Without Outliers):")
-print(t_test_acc_clean$p.value)
-# Note for paper: If both p-values are > 0.05, the conclusion DOES NOT change. Keep outliers in final report.
 
 # ---------------------------------------------------------
 # SENSITIVITY ANALYSIS: GENDER (Removing Outliers 12 and 14)
 # ---------------------------------------------------------
+
+# Unused...
+
 print(">>> GENDER SENSITIVITY ANALYSIS (Without Outliers) <<<")
 
 # Use the cleaned dataset (without the 12 and 14 accuracy scores)
@@ -358,49 +284,3 @@ print(t_test_gender_acc$p.value) # Should be 0.3618
 
 print("Cleaned Gender P-Value (Without Outliers):")
 print(t_test_gender_clean$p.value)
-
-print(">>> NON-PARAMETRIC ALTERNATIVE (Wilcoxon Rank-Sum Test) <<<")
-# This is the non-parametric equivalent of the independent t-test
-# We include alternative="greater" here to match your directional hypotheses
-wilcox_time <- wilcox.test(Time ~ Mode, data = df, alternative = "greater")
-wilcox_acc <- wilcox.test(Accuracy ~ Mode, data = df, alternative = "greater")
-
-print("Wilcoxon Test (Time):")
-print(wilcox_time)
-
-print("Wilcoxon Test (Accuracy):")
-print(wilcox_acc)
-
-# Some more extra stuff
-
-# ---------------------------------------------------------
-# EFFECT SIZE (COHEN'S D)
-# ---------------------------------------------------------
-
-
-print(">>> COHEN'S D FOR PRIMARY T-TESTS <<<")
-
-# Cohen's d for Time
-d_time <- cohens_d(Time ~ Mode, data = df)
-print("Cohen's d (Time):")
-print(d_time)
-
-# Cohen's d for Accuracy
-d_acc <- cohens_d(Accuracy ~ Mode, data = df)
-print("Cohen's d (Accuracy):")
-print(d_acc)
-
-# ---------------------------------------------------------
-# EFFECT SIZE (COHEN'S D) FOR GENDER
-# ---------------------------------------------------------
-print(">>> COHEN'S D FOR GENDER (EXPLORATORY) <<<")
-
-# Cohen's d for Time by Gender
-d_gender_time <- cohens_d(Time ~ Gender, data = df)
-print("Cohen's d (Time by Gender):")
-print(d_gender_time)
-
-# Cohen's d for Accuracy by Gender
-d_gender_acc <- cohens_d(Accuracy ~ Gender, data = df)
-print("Cohen's d (Accuracy by Gender):")
-print(d_gender_acc)
